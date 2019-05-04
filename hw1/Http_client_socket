@@ -1,0 +1,62 @@
+import socket
+import sys
+print("Student ID : 20171644")
+print("Name : JungMin An")
+
+while (True):
+    order = input()
+    if order == "quit":
+        sys.exit(1)
+    try: 
+        cmd, url, port, obj = order.split()
+    except ValueError:
+        print ("please input right order")
+        continue
+
+    objl = obj.split("/")
+    fname = objl[-1]
+
+    host = socket.gethostbyname(url)    # The remote host
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.connect((host, int(port)))
+        message = "GET " + obj + " HTTP/1.0\r\n"
+        message += "Host: " + url + "\r\n"
+        message += "User-agent: HW1/1.0\r\n"
+        message += "ID: 20171644\r\n"
+        message += "Name: JungMin An\r\n"
+        message += "Connection: close\r\n\r\n"
+        bmessage = bytes(message,encoding="utf-8")
+        s.sendall(bmessage)
+        data = s.recv(1024)
+        item = data.split(b"\r\n\r\n")
+        hfield = item[0]
+        htags = hfield.split(b"\r\n")
+        size = 0
+        for i in htags:
+            if b"Content-Length" in i:
+                sizei = i.split(b" ")
+                size = int(sizei[1].decode("utf-8"))
+                break
+        print("Total Size " + str(size) + " bytes")
+        flagsize = size/10
+        checkpoint = flagsize
+        img = item[-1]
+        if not img:
+            img = s.recv(1024)
+        #print(item)
+        n = len(img) - 1024
+        with open(fname, "wb") as f:
+            try:
+                while img:
+                    f.write(img)
+                    n += 1024
+                    if n >= checkpoint:
+                        if n > size:
+                            n = size
+                        print ("Current Downloading %d/%d (bytes) %d%%"%(n, size, int(100*n/size)))
+                        checkpoint += flagsize
+                    img = s.recv(1024)
+            except Exception as e:
+                print(e)
+    print("Download Complete : %s, %d/%d"%(fname, size, size))
+    print()
